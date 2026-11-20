@@ -12,7 +12,7 @@ controller's parameters, which is what makes the training possible.
 
 So far this repo is DiffMPC's quadrotor example and nothing more. The script
 follows `notebooks/RL_quadrotor.ipynb` step for step, with the same settings and
-the same random start, and reproduces its rewards. Thrust limits, wind, and
+the same random start. Thrust limits, wind, and
 randomization are the work ahead; see [docs/TODO.md](docs/TODO.md).
 
 ## Try it
@@ -24,14 +24,22 @@ git clone https://github.com/EthanMBoos/diffmpc-drones.git
 cd diffmpc-drones
 git submodule update --init
 uv sync
-uv run diffmpc-drones    # 20 training updates, about 3.5 minutes on a CPU
+uv run diffmpc-drones    # crashes at the first training update
 ```
 
-The reward goes from -242.00 at the first update to -131.86 at the last, and it
-does not rise at every update. The notebook, run unchanged with the same JAX
-version, prints the same rewards. JAX is pinned to 0.7.2, the release from the
-month DiffMPC was published. This was run on an Apple M-series CPU and has not
-been run on a GPU.
+**Training currently crashes.** JAX is now 0.12.1, and the first update fails
+with:
+
+```
+ValueError: under vmap, the custom_vjp function solve has a primal output that
+is shared across the batch (unbatched) with a nonzero right cotangent, and its
+bwd rule produced a batched left cotangent for an unbatched primal input.
+```
+
+The script is unchanged from the previous commit, where JAX was pinned to 0.7.2
+and training ran for 20 updates, with the reward going from -242.00 to -131.86.
+The notebook, run unchanged, crashes the same way on JAX 0.12.1. The solve
+before training still runs.
 
 Do not pass `--recursive` to the submodule command. DiffMPC has a submodule of
 its own that this repo does not use.

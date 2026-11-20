@@ -30,6 +30,10 @@ ripple first.
 
 ## Known limits
 
+Training crashes on JAX 0.12.1 with an error about batching the solver's custom
+gradient. It ran on JAX 0.7.2, and DiffMPC's notebook crashes the same way on
+0.12.1.
+
 The solver does not settle on the quadrotor example. At each control step it
 improves a plan over repeated iterations and should stop once the plan changes
 by less than 0.00000001 between iterations. Here it uses all 50 allowed

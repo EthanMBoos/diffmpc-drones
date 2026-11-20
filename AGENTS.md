@@ -35,8 +35,8 @@ follows from it.
 ## Where we stand
 
 - The repository holds DiffMPC's quadrotor example as a script,
-  `src/diffmpc_drones/rl_quadrotor.py`. It follows the notebook step for step
-  and reproduces its rewards.
+  `src/diffmpc_drones/rl_quadrotor.py`. It follows the notebook step for step.
+  Training crashes on JAX 0.12.1; the README has the error.
 - The drone model, the cost and the solver are DiffMPC's, imported from the
   submodule.
 - Everything is JAX in double precision. The state is DiffMPC's 13 numbers:
