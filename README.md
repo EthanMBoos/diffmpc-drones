@@ -31,16 +31,19 @@ uv run diffmpc-drones    # 20 training updates, about 3.5 minutes on a CPU
 ```
 
 The reward goes from -241.91 at the first update to -130.90 at the last, and it
-does not rise at every update. This was run on an Apple M-series CPU with JAX
-0.12.1 and has not been run on a GPU.
+does not rise at every update. The script also reports that the solver settled
+at 0 of 10 control steps. That is expected on this example; the last section of
+[docs/DIFFMPC.md](docs/DIFFMPC.md) explains why and how it was measured. This
+was run on an Apple M-series CPU with JAX 0.12.1 and has not been run on a GPU.
 
-The script differs from the notebook in one line. DiffMPC keeps a warm start for
-its backward solve in a field of the starting guess, and JAX 0.12.1 crashes when
-that field is the same for every drone in a batch. The script adds zero times
-the drone's state to the field, which makes it one per drone without changing
-its value. On JAX 0.7.2 the script prints the same rewards with and without that
-line; there the reward goes from -242.00 to -131.86, so the small difference
-above comes from the JAX version.
+By default the script computes what the notebook computes. It differs in one
+line that affects the calculation. DiffMPC keeps a warm start for its backward
+solve in a field of the starting guess, and JAX 0.12.1 crashes when that field
+is the same for every drone in a batch. The script adds zero times the drone's
+state to the field, which makes it one per drone without changing its value. On
+JAX 0.7.2 the script prints the same rewards with and without that line; there
+the reward goes from -242.00 to -131.86, so the small difference above comes
+from the JAX version.
 
 Do not pass `--recursive` to the submodule command. DiffMPC has a submodule of
 its own that this repo does not use.

@@ -27,22 +27,3 @@ real drone. ArduCopter accepts a thrust and body rates, not torques, so the
 controller would need a second drone model with those controls. ripple's
 ArduPilot bridge flies only ArduPlane today, so this requires copter support in
 ripple first.
-
-## Known limits
-
-The solver does not settle on the quadrotor example. At each control step it
-improves a plan over repeated iterations and should stop once the plan changes
-by less than 0.00000001 between iterations. Here it uses all 50 allowed
-iterations at every step, is still changing the plan by between 0.00001 and 0.3,
-and reports an error status. The drone still flies, because an unsettled plan is
-still a usable plan.
-
-This comes from DiffMPC's quadrotor example, not from this repo's changes or
-from DiffMPC in general. The notebook reports the same status when run unchanged
-on JAX 0.7.2, and DiffMPC's own tests pass. The likely cause is the example's
-cost weights, which range from 0.0001 to 100,000, but that has not been
-confirmed.
-
-It matters because DiffMPC's gradient assumes that the solver found the best
-plan. When it has not, the gradient is approximate. Training still raises the
-reward, but not at every update.

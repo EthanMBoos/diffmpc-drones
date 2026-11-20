@@ -35,8 +35,8 @@ follows from it.
 ## Where we stand
 
 - The repository holds DiffMPC's quadrotor example as a script,
-  `src/diffmpc_drones/rl_quadrotor.py`. It follows the notebook step for step,
-  except for one line that JAX 0.12.1 needs; the README says why.
+  `src/diffmpc_drones/rl_quadrotor.py`. By default it computes what the notebook
+  computes, with one line added that JAX 0.12.1 needs; the README says why.
 - The drone model, the cost and the solver are DiffMPC's, imported from the
   submodule.
 - Everything is JAX in double precision. The state is DiffMPC's 13 numbers:

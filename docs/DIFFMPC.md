@@ -500,8 +500,9 @@ through.
 
 **Failure is a value.** Compiled JAX code cannot raise an error partway through.
 A solve that does not settle returns a plan with `status` set to -100, and any
-NaN in the plan is replaced by zero. Nothing stops the program, so the status
-has to be read.
+NaN in the plan is replaced by zero. Nothing stops the program, so the status is
+the only sign that a solve did not settle. The last section says when that
+matters.
 
 **Parallel over time means `vmap` over the time index.** The matrix $S$ is never
 assembled. It is stored as one small block per time step, and a product with $S$
@@ -540,37 +541,62 @@ runs one solve. Double precision has to be switched on, because the PCG
 tolerance is below what single precision can resolve. The last row of
 `solution.controls` is padding.
 
-## What to rely on
+## Solver status and gradient accuracy
 
-The mathematics, the paper's experiment, and this repository's example deserve
-different amounts of trust.
+On this repository's example the solver reports an error at every control step
+(`status` is -100), and the gradient differs from the exact one by up to a
+factor of two. Neither is being fixed.
 
-The mathematics is settled. When the solver has found the minimum of its
-problem, the gradient it returns is exact, and it costs one linear solve. This
-was known before the paper and does not depend on anything in this repository.
+In most numerical work a solver runs until its answer stops changing, and an
+answer from a solver that did not converge is not used. MPC in a control loop
+works differently. The controller applies only the first control of each plan
+and then replans from the drone's new state, so an error in one plan is
+corrected by the next. A common scheme, the real-time iteration, runs a single
+solver iteration per control step for this reason, and the paper's car used it
+in training and on the road. The quantity being optimized is the flight, not any
+one plan.
 
-The paper shows that the method works on a real vehicle when its conditions are
-only partly met. The car's controller ran one SQP iteration per control step,
-its control limits lived only in the simulator, and the trained controller still
-drifted through a puddle that the hand-tuned one could not. This suggests that
-training needs a gradient that points in a useful direction and does not need an
-exact one.
+In most deep learning the gradient is exact for the computation that was run,
+and a gradient that fails a finite-difference check indicates a bug. Training
+does not depend on that exactness. Each update is a small step, so the gradient
+only has to point uphill on average, and trial-and-error methods (e.g., PPO)
+train on estimates that are typically much noisier than this one. DiffMPC gives
+up exactness on purpose: it ignores the curvature of the drone model so that the
+backward pass can reuse the linear system from the forward pass, which is what
+makes the gradient cheap.
 
-This repository's example is a reproduction and not yet a result. It trains 30
-cost weights for one drone over a flight of 0.3 s, in a simulator identical to
-the controller's model. The reward rises, which shows the pipeline runs from end
-to end. The solver does not settle on this example, so its gradients are
-approximate; [TODO.md](TODO.md) describes this under "Known limits".
+Both were measured here. The solver does not settle because its linear solver
+stops when a scaled error falls below a tolerance, and the example's smallest
+cost weights (0.0001) make the scaled error much smaller than the real one.
+DiffMPC's notebook behaves the same when run unchanged. With the tolerance
+lowered from 1e-12 to 1e-30 and the iteration limit raised from 50 to 400, the
+solver settles at all ten control steps, and 20 updates then took 719 s against
+200 s and ended at a reward of -139.30 against -130.90, in one run with one
+drone. The notebook's settings are therefore the default, and the others are
+behind a flag:
 
-The one habit that follows is to read `solution.status` after a solve. The
-gradient formula assumes the solver finished, the status says whether it did,
-and nothing else in the program will report it.
+```sh
+uv run diffmpc-drones --settle
+```
 
-The method has limits that no setting removes. The controller's problem can
+The gradient was checked on one settled solve. DiffMPC's gradient matched a
+direct calculation with the same simplification to four digits, so the code does
+what the paper describes. A direct calculation that keeps the model's curvature
+matched finite differences and differed from DiffMPC's by up to a factor of two.
+No setting removes that difference.
+
+```sh
+uv run python -m diffmpc_drones.gradient_check
+```
+
+If training on a harder task stalls or moves the wrong way, `--settle` is the
+first thing to try.
+
+The method also has limits that no setting removes. The controller's problem can
 hold only equality constraints, so a limit (e.g., maximum thrust) has to live in
-the simulator or in the cost. The gradient also passes through every step of the
+the simulator or in the cost. The gradient passes through every step of the
 simulated flight, so its error grows with the length of the flight, and grows
 faster for a vehicle that is unstable. The paper adds a third as an open
 problem: a poor starting guess can make the solver diverge.
 
-The open work for this repository is in the same file.
+The open work for this repository is in [TODO.md](TODO.md).

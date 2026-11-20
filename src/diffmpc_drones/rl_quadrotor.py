@@ -28,6 +28,12 @@ RATE = 1e-4
 BATCH = 1
 SEED = 0
 
+# Solver settings as (SQP iteration limit, PCG tolerance). With the notebook's,
+# the solver stops at its iteration limit on every control step. With the second
+# pair it settles; docs/DIFFMPC.md says why training does not use them.
+NOTEBOOK_SOLVER = (50, 1.0e-12)
+SETTLING_SOLVER = (400, 1.0e-30)
+
 WEIGHT_KEYS = (
     "weights_penalization_reference_state_trajectory",
     "weights_penalization_control_squared",
@@ -48,7 +54,7 @@ def start_states(batch: int = BATCH, seed: int = SEED) -> jnp.ndarray:
     return jnp.array(states)
 
 
-def build(initial_state):
+def build(initial_state, solver_settings=NOTEBOOK_SOLVER):
     """The notebook's problem, solver and trainable cost weights."""
     params = load_problem_params("quadrotor.yaml")
     steps = HORIZON - 1  # DiffMPC counts a horizon of N as N + 1 states
@@ -60,8 +66,8 @@ def build(initial_state):
         params[key] = jnp.repeat(params[key][:1], steps + 1, axis=0)
 
     solver_params = load_solver_params("sqp.yaml")
-    solver_params["num_scp_iteration_max"] = 50
-    solver_params["pcg"]["tol_epsilon"] = 1.0e-12
+    solver_params["num_scp_iteration_max"] = solver_settings[0]
+    solver_params["pcg"]["tol_epsilon"] = solver_settings[1]
     solver_params["linesearch"] = True
 
     dynamics = QuadrotorDynamics()
@@ -79,8 +85,12 @@ def reward(state, control, params):
     return -(jnp.sum((state[:3] - goal[:3]) ** 2) + 0.1 * jnp.sum((control - trim) ** 2))
 
 
-def rollout(dynamics, solver, params, state, weights):
-    """Fly SIM_STEPS control steps in closed loop and return the summed reward."""
+def fly(dynamics, solver, params, state, weights):
+    """Fly SIM_STEPS control steps in closed loop.
+
+    Returns the summed reward, and the solver's status and iteration count at
+    each control step.
+    """
 
     def first_guess(state):
         guess = solver.initial_guess({**params, "initial_state": state})
@@ -111,11 +121,17 @@ def rollout(dynamics, solver, params, state, weights):
             state,
             control,
         )
-        return (state, solution, total + reward(state, control, params)), None
+        carry = (state, solution, total + reward(state, control, params))
+        return carry, (solution.status, solution.num_iter)
 
     carry = (state, first_guess(state), 0.0)
-    (_, _, total), _ = jax.lax.scan(step, carry, None, length=SIM_STEPS)
-    return total
+    (_, _, total), (statuses, iterations) = jax.lax.scan(step, carry, None, length=SIM_STEPS)
+    return total, statuses, iterations
+
+
+def rollout(dynamics, solver, params, state, weights):
+    """The summed reward of one closed-loop flight."""
+    return fly(dynamics, solver, params, state, weights)[0]
 
 
 def make_update(dynamics, solver, params, starts):
@@ -140,16 +156,30 @@ def make_update(dynamics, solver, params, starts):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--updates", type=int, default=UPDATES, help="gradient updates")
+    parser.add_argument(
+        "--settle",
+        action="store_true",
+        help="use solver settings that let the solver settle, at about 3.5 times the run time",
+    )
     args = parser.parse_args()
 
     starts = start_states()
-    dynamics, solver, params, weights = build(starts[0])
+    settings = SETTLING_SOLVER if args.settle else NOTEBOOK_SOLVER
+    dynamics, solver, params, weights = build(starts[0], settings)
     print(f"JAX {jax.__version__} on {jax.devices()[0]}")
 
     baseline = solver.solve(solver.initial_guess(params), params, weights)
     print(
         f"solve with the starting weights: status {int(baseline.status)}, "
         f"{int(baseline.num_iter)} iterations"
+    )
+
+    _, statuses, iterations = jax.jit(fly, static_argnums=(0, 1))(
+        dynamics, solver, params, starts[0], weights
+    )
+    print(
+        f"flight with the starting weights: {int((statuses == 0).sum())} of {SIM_STEPS} "
+        f"solves settled, iterations {[int(n) for n in iterations]}"
     )
 
     update = make_update(dynamics, solver, params, starts)
