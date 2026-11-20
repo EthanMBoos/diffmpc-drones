@@ -15,6 +15,9 @@ follows `notebooks/RL_quadrotor.ipynb` step for step, with the same settings and
 the same random start. Thrust limits, wind, and
 randomization are the work ahead; see [docs/TODO.md](docs/TODO.md).
 
+[docs/DIFFMPC.md](docs/DIFFMPC.md) explains how DiffMPC works, from the control
+problem to the gradient.
+
 ## Try it
 
 With [uv](https://docs.astral.sh/uv/) installed:
