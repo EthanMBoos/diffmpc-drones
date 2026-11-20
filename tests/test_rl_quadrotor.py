@@ -20,9 +20,6 @@ def test_rollout_reward_is_finite():
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(
-    raises=ValueError, strict=True, reason="JAX 0.12.1 refuses to batch the gradient"
-)
 def test_one_update_changes_the_weights():
     starts = rq.start_states()
     dynamics, solver, params, weights = rq.build(starts[0])

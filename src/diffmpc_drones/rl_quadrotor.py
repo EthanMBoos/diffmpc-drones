@@ -87,7 +87,16 @@ def rollout(dynamics, solver, params, state, weights):
         quaternions = guess.states[:, 6:10]
         quaternions = quaternions / jnp.linalg.norm(quaternions, axis=1, keepdims=True)
         controls = jnp.repeat(jnp.array([[1.0, 0.0, 0.0, 0.0]]), HORIZON, axis=0)
-        return guess._replace(states=guess.states.at[:, 6:10].set(quaternions), controls=controls)
+        # DiffMPC keeps a warm start for its backward solve in this field. It
+        # starts out the same for every drone, and JAX 0.12.1 will not batch a
+        # gradient through a field that is shared across the batch. Adding zero
+        # times the state makes it one per drone without changing its value.
+        backward_guess = guess.dual_backward_guess + 0.0 * state[0]
+        return guess._replace(
+            states=guess.states.at[:, 6:10].set(quaternions),
+            controls=controls,
+            dual_backward_guess=backward_guess,
+        )
 
     def step(carry, _):
         state, solution, total = carry

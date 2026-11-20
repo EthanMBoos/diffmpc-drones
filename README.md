@@ -24,22 +24,20 @@ git clone https://github.com/EthanMBoos/diffmpc-drones.git
 cd diffmpc-drones
 git submodule update --init
 uv sync
-uv run diffmpc-drones    # crashes at the first training update
+uv run diffmpc-drones    # 20 training updates, about 3.5 minutes on a CPU
 ```
 
-**Training currently crashes.** JAX is now 0.12.1, and the first update fails
-with:
+The reward goes from -241.91 at the first update to -130.90 at the last, and it
+does not rise at every update. This was run on an Apple M-series CPU with JAX
+0.12.1 and has not been run on a GPU.
 
-```
-ValueError: under vmap, the custom_vjp function solve has a primal output that
-is shared across the batch (unbatched) with a nonzero right cotangent, and its
-bwd rule produced a batched left cotangent for an unbatched primal input.
-```
-
-The script is unchanged from the previous commit, where JAX was pinned to 0.7.2
-and training ran for 20 updates, with the reward going from -242.00 to -131.86.
-The notebook, run unchanged, crashes the same way on JAX 0.12.1. The solve
-before training still runs.
+The script differs from the notebook in one line. DiffMPC keeps a warm start for
+its backward solve in a field of the starting guess, and JAX 0.12.1 crashes when
+that field is the same for every drone in a batch. The script adds zero times
+the drone's state to the field, which makes it one per drone without changing
+its value. On JAX 0.7.2 the script prints the same rewards with and without that
+line; there the reward goes from -242.00 to -131.86, so the small difference
+above comes from the JAX version.
 
 Do not pass `--recursive` to the submodule command. DiffMPC has a submodule of
 its own that this repo does not use.
