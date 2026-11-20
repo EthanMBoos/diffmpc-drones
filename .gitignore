@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+*.egg-info
+
+# Virtual environments
+.venv/
+
+# Tooling
+.ruff_cache/
+.pytest_cache/
+
+# Run outputs
+/runs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

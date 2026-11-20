@@ -1,0 +1,49 @@
+[project]
+name = "diffmpc-drones"
+version = "0.1.0"
+description = "Tuning a drone's model predictive controller by training it, with DiffMPC"
+readme = "README.md"
+authors = [
+    { name = "Ethan Boos", email = "moosboos1@gmail.com" }
+]
+requires-python = "==3.12.*"
+dependencies = [
+    "diffmpc",
+    # The JAX release from the month DiffMPC was published (October 2025).
+    "jax==0.7.2",
+    "jaxlib==0.7.2",
+]
+
+[project.scripts]
+diffmpc-drones = "diffmpc_drones.rl_quadrotor:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+    "pre-commit>=4",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+# Toyota Research Institute's solver, unmodified, as a git submodule. It is
+# installed editable because its setup.py does not package the YAML parameter
+# files or the `dynamics` folder, so a built wheel of it does not import.
+diffmpc = { path = "third_party/diffmpc", editable = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["third_party"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: compiles a training update (deselect with -m 'not slow')",
+]

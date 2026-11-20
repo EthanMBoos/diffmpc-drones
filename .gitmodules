@@ -1,0 +1,3 @@
+[submodule "third_party/diffmpc"]
+	path = third_party/diffmpc
+	url = https://github.com/ToyotaResearchInstitute/diffmpc.git
